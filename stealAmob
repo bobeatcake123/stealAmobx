@@ -13,6 +13,7 @@ local oldPos = nil
 local espEnabled = false
 local instantInteract = false
 local autoInteract = false
+local loopSteal = false
 local forwardDistance = 10
 local delayTime = 0.1
 local espFolder = Instance.new("Folder")
@@ -129,6 +130,7 @@ forwardBox.Text = ""
 
 local espBtn = makeButton("ESP: OFF")
 local stealBtn = makeButton("Steal")
+local loopStealBtn = makeButton("Loop Steal: OFF")
 local interactBtn = makeButton("Instant Interact: OFF")
 local hopBtn = makeButton("Server Hop")
 local autoBtn = makeButton("Auto Interact: OFF")
@@ -261,6 +263,25 @@ stealBtn.MouseButton1Click:Connect(function()
     end
 end)
 
+-- Loop Steal Toggle
+loopStealBtn.MouseButton1Click:Connect(function()
+    loopSteal = not loopSteal
+    loopStealBtn.Text = loopSteal and "Loop Steal: ON" or "Loop Steal: OFF"
+end)
+
+-- Loop Steal Behavior
+task.spawn(function()
+    while task.wait(0.3) do
+        if loopSteal and savedPos and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+            local hrp = player.Character.HumanoidRootPart
+            oldPos = hrp.CFrame
+            hrp.CFrame = savedPos
+            task.wait(0.1)
+            hrp.CFrame = oldPos
+        end
+    end
+end)
+
 -- Instant Interact Toggle
 interactBtn.MouseButton1Click:Connect(function()
     instantInteract = not instantInteract
@@ -280,7 +301,7 @@ task.spawn(function()
     end
 end)
 
--- Auto Interact
+-- Auto Interact (fixed, only within 20 studs)
 autoBtn.MouseButton1Click:Connect(function()
     autoInteract = not autoInteract
     autoBtn.Text = autoInteract and "Auto Interact: ON" or "Auto Interact: OFF"
@@ -288,12 +309,23 @@ end)
 
 task.spawn(function()
     while task.wait(0.2) do
-        if autoInteract then
+        if autoInteract and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+            local hrp = player.Character.HumanoidRootPart
             for _, prompt in pairs(workspace:GetDescendants()) do
                 if prompt:IsA("ProximityPrompt") and prompt.Enabled then
-                    pcall(function()
-                        fireproximityprompt(prompt)
-                    end)
+                    local part
+                    if prompt.Parent:IsA("BasePart") then
+                        part = prompt.Parent
+                    elseif prompt.Parent:FindFirstChild("HumanoidRootPart") then
+                        part = prompt.Parent:FindFirstChild("HumanoidRootPart")
+                    elseif prompt.Parent:FindFirstChildWhichIsA("BasePart") then
+                        part = prompt.Parent:FindFirstChildWhichIsA("BasePart")
+                    end
+                    if part and (part.Position - hrp.Position).Magnitude <= 20 then
+                        pcall(function()
+                            fireproximityprompt(prompt)
+                        end)
+                    end
                 end
             end
         end
