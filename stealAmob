@@ -38,7 +38,7 @@ local Title = Instance.new("TextLabel")
 Title.Parent = Frame
 Title.Size = UDim2.new(1, 0, 0, 30)
 Title.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-Title.Text = "xlic made this banger script"
+Title.Text = "xlic made this (if u paid for this you got scammed)"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.Font = Enum.Font.GothamBold
 Title.TextSize = 14
@@ -192,7 +192,7 @@ end
 local function toggleESP()
     espEnabled = not espEnabled
     if espEnabled then
-        espBtn.Text = "ESP: ON"
+        espBtn.Text = "ESP: ON (broke)"
         scanForMobs()
     else
         espBtn.Text = "ESP: OFF"
@@ -223,6 +223,7 @@ local function setPromptInstant(prompt, state)
     end
 end
 
+-- Save original hold duration for all current prompts
 for _, prompt in pairs(workspace:GetDescendants()) do
     if prompt:IsA("ProximityPrompt") then
         if prompt:GetAttribute("OriginalHoldDuration") == nil then
@@ -231,6 +232,7 @@ for _, prompt in pairs(workspace:GetDescendants()) do
     end
 end
 
+-- Track new prompts
 workspace.DescendantAdded:Connect(function(obj)
     if obj:IsA("ProximityPrompt") then
         if obj:GetAttribute("OriginalHoldDuration") == nil then
@@ -242,14 +244,23 @@ workspace.DescendantAdded:Connect(function(obj)
     end
 end)
 
+-- Toggle button
 interactBtn.MouseButton1Click:Connect(function()
     instantInteract = not instantInteract
     interactBtn.Text = instantInteract and "Instant Interact: ON" or "Instant Interact: OFF"
+end)
 
-    for _, prompt in pairs(workspace:GetDescendants()) do
-        if prompt:IsA("ProximityPrompt") then
-            setPromptInstant(prompt, instantInteract)
+-- Loop to always apply when ON
+task.spawn(function()
+    while true do
+        if instantInteract then
+            for _, prompt in pairs(workspace:GetDescendants()) do
+                if prompt:IsA("ProximityPrompt") then
+                    prompt.HoldDuration = 0
+                end
+            end
         end
+        task.wait(1)
     end
 end)
 
