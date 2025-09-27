@@ -12,8 +12,9 @@ local savedPos = nil
 local oldPos = nil
 local espEnabled = false
 local instantInteract = false
-local forwardDistance = 10 -- default forward distance
-local delayTime = 0.1 -- blink delay for steal
+local autoInteract = false
+local forwardDistance = 10
+local delayTime = 0.1
 local espFolder = Instance.new("Folder")
 espFolder.Name = "ESP_Highlights"
 espFolder.Parent = game.CoreGui
@@ -25,7 +26,7 @@ ScreenGui.ResetOnSpawn = false
 
 local Frame = Instance.new("Frame")
 Frame.Parent = ScreenGui
-Frame.Size = UDim2.new(0, 250, 0, 500) -- space for all buttons
+Frame.Size = UDim2.new(0, 250, 0, 500) -- default PC size
 Frame.Position = UDim2.new(0.35, 0, 0.35, 0)
 Frame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
 Frame.BorderSizePixel = 0
@@ -33,23 +34,71 @@ Frame.Active = true
 Frame.Draggable = true
 Frame.Visible = true
 
+-- Layout for buttons
+local layout = Instance.new("UIListLayout")
+layout.Parent = Frame
+layout.Padding = UDim.new(0, 5)
+layout.FillDirection = Enum.FillDirection.Vertical
+layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+layout.SortOrder = Enum.SortOrder.LayoutOrder
+
+-- Device Selector Popup
+local selector = Instance.new("Frame")
+selector.Parent = ScreenGui
+selector.Size = UDim2.new(0, 200, 0, 120)
+selector.Position = UDim2.new(0.5, -100, 0.5, -60)
+selector.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+selector.BorderSizePixel = 0
+selector.Active = true
+selector.Draggable = true
+
+local selTitle = Instance.new("TextLabel")
+selTitle.Parent = selector
+selTitle.Size = UDim2.new(1, 0, 0, 30)
+selTitle.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+selTitle.Text = "Select Device"
+selTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
+selTitle.Font = Enum.Font.GothamBold
+selTitle.TextSize = 16
+selTitle.BorderSizePixel = 0
+
+local pcBtn = Instance.new("TextButton")
+pcBtn.Parent = selector
+pcBtn.Size = UDim2.new(1, -20, 0, 35)
+pcBtn.Position = UDim2.new(0, 10, 0, 40)
+pcBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+pcBtn.Text = "PC"
+pcBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+pcBtn.Font = Enum.Font.Gotham
+pcBtn.TextSize = 14
+
+local mobileBtn = Instance.new("TextButton")
+mobileBtn.Parent = selector
+mobileBtn.Size = UDim2.new(1, -20, 0, 35)
+mobileBtn.Position = UDim2.new(0, 10, 0, 80)
+mobileBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+mobileBtn.Text = "Mobile"
+mobileBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+mobileBtn.Font = Enum.Font.Gotham
+mobileBtn.TextSize = 14
+
 -- Title
 local Title = Instance.new("TextLabel")
 Title.Parent = Frame
 Title.Size = UDim2.new(1, 0, 0, 30)
 Title.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-Title.Text = "xlic made this (if u paid for this you got scammed)"
+Title.Text = "xlic made this banger script"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.Font = Enum.Font.GothamBold
 Title.TextSize = 14
 Title.BorderSizePixel = 0
+Title.LayoutOrder = 0
 
--- Buttons
-local function makeButton(text, yPos)
+-- Button creator
+local function makeButton(text)
     local btn = Instance.new("TextButton")
     btn.Parent = Frame
     btn.Size = UDim2.new(1, -20, 0, 35)
-    btn.Position = UDim2.new(0, 10, 0, yPos)
     btn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
     btn.TextColor3 = Color3.fromRGB(255, 255, 255)
     btn.Text = text
@@ -60,17 +109,16 @@ local function makeButton(text, yPos)
     return btn
 end
 
-local saveBtn = makeButton("Save Position", 40)
-local tpBtn = makeButton("TP to Position", 80)
-local backBtn = makeButton("TP Back", 120)
-local forwardBtn = makeButton("TP Forward", 160)
-local tpSavedBtn = makeButton("TP Last Saved", 200)
+-- Buttons
+local saveBtn = makeButton("Save Position")
+local tpBtn = makeButton("TP to Position")
+local backBtn = makeButton("TP Back")
+local forwardBtn = makeButton("TP Forward")
+local tpSavedBtn = makeButton("TP Last Saved")
 
--- Forward distance box
 local forwardBox = Instance.new("TextBox")
 forwardBox.Parent = Frame
 forwardBox.Size = UDim2.new(1, -20, 0, 30)
-forwardBox.Position = UDim2.new(0, 10, 0, 240)
 forwardBox.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
 forwardBox.TextColor3 = Color3.fromRGB(255, 255, 255)
 forwardBox.PlaceholderText = "Forward Distance (default 10)"
@@ -79,222 +127,195 @@ forwardBox.TextSize = 14
 forwardBox.ClearTextOnFocus = false
 forwardBox.Text = ""
 
-local espBtn = makeButton("ESP: OFF", 280)
-local stealBtn = makeButton("Steal", 320)
-local interactBtn = makeButton("Instant Interact: OFF", 360)
-local hopBtn = makeButton("Server Hop", 400)
+local espBtn = makeButton("ESP: OFF")
+local stealBtn = makeButton("Steal")
+local interactBtn = makeButton("Instant Interact: OFF")
+local hopBtn = makeButton("Server Hop")
+local autoBtn = makeButton("Auto Interact: OFF")
 
---// Functions
-local function getChar()
-    return player.Character or player.CharacterAdded:Wait()
+-- Resize UI function
+local function resizeUI(device)
+    if device == "PC" then
+        Frame.Size = UDim2.new(0, 250, 0, 500)
+        for _, child in pairs(Frame:GetChildren()) do
+            if child:IsA("TextButton") then
+                child.Size = UDim2.new(1, -20, 0, 35)
+                child.TextSize = 14
+            elseif child:IsA("TextBox") then
+                child.Size = UDim2.new(1, -20, 0, 30)
+                child.TextSize = 14
+            end
+        end
+    elseif device == "Mobile" then
+        Frame.Size = UDim2.new(0, 180, 0, 350)
+        for _, child in pairs(Frame:GetChildren()) do
+            if child:IsA("TextButton") then
+                child.Size = UDim2.new(1, -20, 0, 25)
+                child.TextSize = 12
+            elseif child:IsA("TextBox") then
+                child.Size = UDim2.new(1, -20, 0, 22)
+                child.TextSize = 12
+            end
+        end
+    end
 end
 
+-- Device picker actions
+pcBtn.MouseButton1Click:Connect(function()
+    resizeUI("PC")
+    selector:Destroy()
+end)
+
+mobileBtn.MouseButton1Click:Connect(function()
+    resizeUI("Mobile")
+    selector:Destroy()
+end)
+
+--// === Features ===
+
+-- Save Position
 saveBtn.MouseButton1Click:Connect(function()
-    local char = getChar()
-    local hrp = char:FindFirstChild("HumanoidRootPart")
-    if hrp then
-        savedPos = hrp.CFrame
-        warn("Position saved!")
+    if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+        savedPos = player.Character.HumanoidRootPart.CFrame
+        print("Position saved:", savedPos)
     end
 end)
 
+-- TP to Position
 tpBtn.MouseButton1Click:Connect(function()
-    local char = getChar()
-    local hrp = char:FindFirstChild("HumanoidRootPart")
-    if hrp and savedPos then
-        oldPos = hrp.CFrame
-        hrp.CFrame = savedPos
-    end
-end)
-
--- TP Last Saved
-tpSavedBtn.MouseButton1Click:Connect(function()
-    local char = getChar()
-    local hrp = char:FindFirstChild("HumanoidRootPart")
-    if hrp and savedPos then
-        hrp.CFrame = savedPos
+    if savedPos and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+        oldPos = player.Character.HumanoidRootPart.CFrame
+        player.Character.HumanoidRootPart.CFrame = savedPos
     end
 end)
 
 -- TP Back
 backBtn.MouseButton1Click:Connect(function()
-    local char = getChar()
-    local hrp = char:FindFirstChild("HumanoidRootPart")
-    if hrp and oldPos then
-        hrp.CFrame = oldPos
+    if oldPos and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+        player.Character.HumanoidRootPart.CFrame = oldPos
     end
 end)
 
 -- TP Forward
 forwardBtn.MouseButton1Click:Connect(function()
-    local char = getChar()
-    local hrp = char:FindFirstChild("HumanoidRootPart")
-    if hrp then
+    if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+        local hrp = player.Character.HumanoidRootPart
+        oldPos = hrp.CFrame
         hrp.CFrame = hrp.CFrame * CFrame.new(0, 0, -forwardDistance)
     end
 end)
 
-forwardBox.FocusLost:Connect(function()
-    local value = tonumber(forwardBox.Text)
-    if value then
-        forwardDistance = value
+-- Forward Box update
+forwardBox.FocusLost:Connect(function(enterPressed)
+    if tonumber(forwardBox.Text) then
+        forwardDistance = tonumber(forwardBox.Text)
     else
         forwardDistance = 10
-        forwardBox.Text = ""
     end
 end)
 
--- ESP
-local keywords = { "Secret", "Diamond", "Gold", "Rainbow", "Normal" }
+-- TP to Last Saved
+tpSavedBtn.MouseButton1Click:Connect(function()
+    if savedPos and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+        player.Character.HumanoidRootPart.CFrame = savedPos
+    end
+end)
 
-local function createESP(obj)
-    if not obj:IsA("Model") then return end
-    local hrp = obj:FindFirstChild("HumanoidRootPart") or obj:FindFirstChildWhichIsA("BasePart")
-    if not hrp then return end
+-- ESP Toggle
+espBtn.MouseButton1Click:Connect(function()
+    espEnabled = not espEnabled
+    espBtn.Text = espEnabled and "ESP: ON" or "ESP: OFF"
+    espFolder:ClearAllChildren()
 
-    local highlight = Instance.new("Highlight")
-    highlight.Adornee = obj
-    highlight.FillColor = Color3.fromRGB(0, 255, 0)
-    highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
-    highlight.Parent = espFolder
+    if espEnabled then
+        local function highlightMob(mob)
+            if mob:IsA("Model") and mob:FindFirstChild("HumanoidRootPart") then
+                local highlight = Instance.new("Highlight")
+                highlight.Adornee = mob
+                highlight.FillColor = Color3.fromRGB(0, 255, 0)
+                highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+                highlight.Parent = espFolder
+            end
+        end
 
-    local billboard = Instance.new("BillboardGui")
-    billboard.Adornee = hrp
-    billboard.Size = UDim2.new(0, 100, 0, 50)
-    billboard.AlwaysOnTop = true
-    billboard.Parent = espFolder
-
-    local label = Instance.new("TextLabel")
-    label.Parent = billboard
-    label.Size = UDim2.new(1, 0, 1, 0)
-    label.BackgroundTransparency = 1
-    label.Text = obj.Name
-    label.TextColor3 = Color3.fromRGB(255, 255, 255)
-    label.Font = Enum.Font.GothamBold
-    label.TextScaled = true
-end
-
-local function scanForMobs()
-    for _, container in pairs({RS, workspace:FindFirstChild("Mobs")}) do
-        if container then
-            for _, obj in pairs(container:GetDescendants()) do
-                for _, word in ipairs(keywords) do
-                    if string.find(obj.Name, word) then
-                        createESP(obj)
-                        break
-                    end
-                end
+        for _, mob in pairs(workspace:GetChildren()) do
+            if mob.Name:lower():find("secret") then
+                highlightMob(mob)
+            end
+        end
+        for _, mob in pairs(RS:GetChildren()) do
+            if mob.Name:lower():find("secret") then
+                highlightMob(mob)
             end
         end
     end
-end
+end)
 
-local function toggleESP()
-    espEnabled = not espEnabled
-    if espEnabled then
-        espBtn.Text = "ESP: ON (broke)"
-        scanForMobs()
-    else
-        espBtn.Text = "ESP: OFF"
-        espFolder:ClearAllChildren()
-    end
-end
-
-espBtn.MouseButton1Click:Connect(toggleESP)
-
--- Steal Button (blink with 0.1s delay)
+-- Steal Button
 stealBtn.MouseButton1Click:Connect(function()
-    local char = getChar()
-    local hrp = char:FindFirstChild("HumanoidRootPart")
-    if hrp and savedPos then
+    if savedPos and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+        local hrp = player.Character.HumanoidRootPart
         oldPos = hrp.CFrame
         hrp.CFrame = savedPos
-        task.wait(0.1)
+        task.wait(delayTime)
         hrp.CFrame = oldPos
     end
 end)
 
--- Instant Interact
-local function setPromptInstant(prompt, state)
-    if state then
-        prompt.HoldDuration = 0
-    else
-        prompt.HoldDuration = prompt:GetAttribute("OriginalHoldDuration") or prompt.HoldDuration
-    end
-end
-
--- Save original hold duration for all current prompts
-for _, prompt in pairs(workspace:GetDescendants()) do
-    if prompt:IsA("ProximityPrompt") then
-        if prompt:GetAttribute("OriginalHoldDuration") == nil then
-            prompt:SetAttribute("OriginalHoldDuration", prompt.HoldDuration)
-        end
-    end
-end
-
--- Track new prompts
-workspace.DescendantAdded:Connect(function(obj)
-    if obj:IsA("ProximityPrompt") then
-        if obj:GetAttribute("OriginalHoldDuration") == nil then
-            obj:SetAttribute("OriginalHoldDuration", obj.HoldDuration)
-        end
-        if instantInteract then
-            obj.HoldDuration = 0
-        end
-    end
-end)
-
--- Toggle button
+-- Instant Interact Toggle
 interactBtn.MouseButton1Click:Connect(function()
     instantInteract = not instantInteract
     interactBtn.Text = instantInteract and "Instant Interact: ON" or "Instant Interact: OFF"
+
+    for _, prompt in pairs(workspace:GetDescendants()) do
+        if prompt:IsA("ProximityPrompt") then
+            prompt.HoldDuration = instantInteract and 0 or 0.5
+        end
+    end
 end)
 
--- Loop to always apply when ON
+-- Update new prompts for Instant Interact
+workspace.DescendantAdded:Connect(function(obj)
+    if obj:IsA("ProximityPrompt") and instantInteract then
+        obj.HoldDuration = 0
+    end
+end)
+
+-- Auto Interact
+autoBtn.MouseButton1Click:Connect(function()
+    autoInteract = not autoInteract
+    autoBtn.Text = autoInteract and "Auto Interact: ON" or "Auto Interact: OFF"
+end)
+
 task.spawn(function()
-    while true do
-        if instantInteract then
+    while task.wait(0.2) do
+        if autoInteract then
             for _, prompt in pairs(workspace:GetDescendants()) do
-                if prompt:IsA("ProximityPrompt") then
-                    prompt.HoldDuration = 0
+                if prompt:IsA("ProximityPrompt") and prompt.Enabled then
+                    pcall(function()
+                        fireproximityprompt(prompt)
+                    end)
                 end
             end
         end
-        task.wait(1)
     end
 end)
 
 -- Server Hop
 hopBtn.MouseButton1Click:Connect(function()
-    local function serverHop()
-        local servers = {}
-        local cursor = ""
-        local currentJobId = game.JobId
-        local gameId = game.PlaceId
+    local servers = {}
+    local req = game:HttpGet("https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Asc&limit=100")
+    local data = HttpService:JSONDecode(req)
 
-        local success, response = pcall(function()
-            return HttpService:JSONDecode(game:HttpGet(
-                ("https://games.roblox.com/v1/games/%d/servers/Public?limit=100&cursor=%s"):format(gameId, cursor)
-            ))
-        end)
-
-        if success and response and response.data then
-            for _, server in ipairs(response.data) do
-                if server.id ~= currentJobId and server.playing < server.maxPlayers then
-                    table.insert(servers, server.id)
-                end
-            end
-        end
-
-        if #servers > 0 then
-            local newServer = servers[math.random(1, #servers)]
-            TeleportService:TeleportToPlaceInstance(gameId, newServer, player)
-        else
-            warn("No available servers found to hop into.")
+    for _, v in pairs(data.data) do
+        if v.playing < v.maxPlayers and v.id ~= game.JobId then
+            table.insert(servers, v.id)
         end
     end
 
-    serverHop()
+    if #servers > 0 then
+        TeleportService:TeleportToPlaceInstance(game.PlaceId, servers[math.random(1, #servers)], player)
+    end
 end)
 
 if IY_LOADED and not _G.IY_DEBUG == true then
