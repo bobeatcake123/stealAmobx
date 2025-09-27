@@ -177,7 +177,6 @@ end)
 saveBtn.MouseButton1Click:Connect(function()
     if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
         savedPos = player.Character.HumanoidRootPart.CFrame
-        print("Position saved:", savedPos)
     end
 end)
 
@@ -206,7 +205,7 @@ forwardBtn.MouseButton1Click:Connect(function()
 end)
 
 -- Forward Box update
-forwardBox.FocusLost:Connect(function(enterPressed)
+forwardBox.FocusLost:Connect(function()
     if tonumber(forwardBox.Text) then
         forwardDistance = tonumber(forwardBox.Text)
     else
@@ -266,18 +265,18 @@ end)
 interactBtn.MouseButton1Click:Connect(function()
     instantInteract = not instantInteract
     interactBtn.Text = instantInteract and "Instant Interact: ON" or "Instant Interact: OFF"
-
-    for _, prompt in pairs(workspace:GetDescendants()) do
-        if prompt:IsA("ProximityPrompt") then
-            prompt.HoldDuration = instantInteract and 0 or 0.5
-        end
-    end
 end)
 
--- Update new prompts for Instant Interact
-workspace.DescendantAdded:Connect(function(obj)
-    if obj:IsA("ProximityPrompt") and instantInteract then
-        obj.HoldDuration = 0
+-- Loop to keep Instant Interact applied
+task.spawn(function()
+    while task.wait(0.5) do
+        if instantInteract then
+            for _, prompt in pairs(workspace:GetDescendants()) do
+                if prompt:IsA("ProximityPrompt") then
+                    prompt.HoldDuration = 0
+                end
+            end
+        end
     end
 end)
 
