@@ -280,7 +280,7 @@ task.spawn(function()
                 hrp.CFrame = savedPos
                 task.wait(0.1)
                 hrp.CFrame = oldPos
-                task.wait(0.5) -- interval every 0.5s
+                task.wait(1) -- interval every 1s
             end
             -- Pause for 20s
             if loopSteal then
@@ -311,14 +311,14 @@ task.spawn(function()
     end
 end)
 
--- Auto Interact (20 studs)
+-- Auto Interact (20 studs, every 1 second)
 autoBtn.MouseButton1Click:Connect(function()
     autoInteract = not autoInteract
     autoBtn.Text = autoInteract and "Auto Interact: ON" or "Auto Interact: OFF"
 end)
 
 task.spawn(function()
-    while task.wait(0.2) do
+    while task.wait(1) do
         if autoInteract and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
             local hrp = player.Character.HumanoidRootPart
             for _, prompt in pairs(workspace:GetDescendants()) do
