@@ -15,7 +15,6 @@ local instantInteract = false
 local autoInteract = false
 local loopSteal = false
 local forwardDistance = 10
-local delayTime = 0.1
 local espFolder = Instance.new("Folder")
 espFolder.Name = "ESP_Highlights"
 espFolder.Parent = game.CoreGui
@@ -258,7 +257,7 @@ stealBtn.MouseButton1Click:Connect(function()
         local hrp = player.Character.HumanoidRootPart
         oldPos = hrp.CFrame
         hrp.CFrame = savedPos
-        task.wait(delayTime)
+        task.wait(0.1)
         hrp.CFrame = oldPos
     end
 end)
@@ -269,26 +268,26 @@ loopStealBtn.MouseButton1Click:Connect(function()
     loopStealBtn.Text = loopSteal and "Loop Steal: ON" or "Loop Steal: OFF"
 end)
 
--- Loop Steal with 30s break every 60s
+-- Loop Steal with 20s break every 2 minutes
 task.spawn(function()
     while true do
         if loopSteal and savedPos and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
             local startTime = tick()
-            -- Run for 60 seconds
-            while loopSteal and tick() - startTime < 60 do
+            -- Run for 120 seconds
+            while loopSteal and tick() - startTime < 120 do
                 local hrp = player.Character.HumanoidRootPart
                 oldPos = hrp.CFrame
                 hrp.CFrame = savedPos
                 task.wait(0.1)
                 hrp.CFrame = oldPos
-                task.wait(0.3)
+                task.wait(0.5) -- interval every 0.5s
             end
-            -- Pause for 30s
+            -- Pause for 20s
             if loopSteal then
-                task.wait(30)
+                task.wait(20)
             end
         else
-            task.wait(0.5) -- idle wait when off
+            task.wait(0.5)
         end
     end
 end)
